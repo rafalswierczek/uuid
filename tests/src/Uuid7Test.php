@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace rafalswierczek\Uuid\Test;
 
-use rafalswierczek\Uuid\Uuid4;
+use rafalswierczek\Uuid\Uuid7;
 use PHPUnit\Framework\TestCase;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\Console\Helper\Table;
@@ -12,9 +12,9 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 
 ini_set('memory_limit', '8192M');
 
-final class Uuid4Test extends TestCase
+final class Uuid7Test extends TestCase
 {
-    public const VALID_UUID4 = 'f3d7fa06-d938-4c22-9505-c585efa381df';
+    public const VALID_UUID7 = '0199d59e-8041-7b74-b74e-b94310cd9473';
 
     private static array $result = [];
 
@@ -27,34 +27,34 @@ final class Uuid4Test extends TestCase
 
     public function testNewInstanceAsString(): void
     {
-        $uuid4 = new Uuid4(strtoupper(self::VALID_UUID4));
+        $uuid7 = new Uuid7(strtoupper(self::VALID_UUID7));
 
-        $this->assertSame(self::VALID_UUID4, (string) $uuid4);
+        $this->assertSame(self::VALID_UUID7, (string) $uuid7);
     }
 
     public function testEquals(): void
     {
-        $uuid4A = new Uuid4(self::VALID_UUID4);
-        $uuid4B = new Uuid4(strtoupper(self::VALID_UUID4));
+        $uuid7A = new Uuid7(self::VALID_UUID7);
+        $uuid7B = new Uuid7(strtoupper(self::VALID_UUID7));
 
-        $this->assertTrue($uuid4A->equals($uuid4B));
-        $this->assertTrue($uuid4B->equals($uuid4A));
+        $this->assertTrue($uuid7A->equals($uuid7B));
+        $this->assertTrue($uuid7B->equals($uuid7A));
     }
 
     public function testNotEquals(): void
     {
-        $uuid4A = Uuid4::create();
-        $uuid4B = Uuid4::create();
+        $uuid7A = Uuid7::create();
+        $uuid7B = Uuid7::create();
 
-        $this->assertFalse($uuid4A->equals($uuid4B));
-        $this->assertFalse($uuid4B->equals($uuid4A));
+        $this->assertFalse($uuid7A->equals($uuid7B));
+        $this->assertFalse($uuid7B->equals($uuid7A));
     }
 
     public function testInvalidUuid(): void
     {
         $this->expectException(\Exception::class);
 
-        new Uuid4('f3d7fa06-d938-7c22-9505-c585efa381df');
+        new Uuid7('0199d59e-8041-4b74-b74e-b94310cd9473');
     }
 
     public function testValidateMany(): void
@@ -62,7 +62,7 @@ final class Uuid4Test extends TestCase
         $this->expectNotToPerformAssertions();
 
         for ($i = 0; $i < 1000000; $i++) {
-            Uuid4::validate(Uuid4::create()->value);
+            Uuid7::validate(Uuid7::create()->value);
         }
     }
 
@@ -126,24 +126,42 @@ final class Uuid4Test extends TestCase
     {
         $mem = memory_get_usage();
         $start = microtime(true);
+        $uuidList = [];
 
         if ($library === 'rafalswierczek') {
             for ($i = 0; $i < $amount; $i++) {
-                Uuid4::create();
+                $uuidList[] = Uuid7::create();
             }
         } elseif ($library === 'ramsey') {
             for ($i = 0; $i < $amount; $i++) {
-                Uuid::uuid4();
+                $uuidList[] = Uuid::uuid7();
             }
         }
 
         $time = substr(sprintf('%12.10f', microtime(true) - $start), 0, 12);
         $memUsed = memory_get_usage() - $mem;
 
+        $uuidListGrouped = [];
+
+        foreach ($uuidList as $uuid7) {
+            $timestampHex = substr((string) $uuid7, 0, 13);
+
+            $uuidListGrouped[$timestampHex][] = (string) $uuid7;
+        }
+
+        $uuidListGroupedCounts = [];
+
+        foreach ($uuidListGrouped as $group) {
+            $uuidListGroupedCounts[] = count($group);
+        }
+
+        $gen1Ms = (int) (array_sum($uuidListGroupedCounts) / count($uuidListGrouped));
+
         self::$result[] = [
             'library' => $library,
             'amount' => $amount,
             'timeTotal' => $time,
+            'gen1Ms' => $gen1Ms,
             'memUsage' => substr(sprintf('%8.7f', $memUsed / 1024 / 1024), 0, 9) . ' MiB',
         ];
     }
@@ -153,11 +171,11 @@ final class Uuid4Test extends TestCase
         $output = new ConsoleOutput();
         $table = new Table($output);
         $table
-            ->setHeaders(['Library', 'Amount', 'Time seconds', 'Memory usage'])
+            ->setHeaders(['Library', 'Amount', 'Time seconds', 'Amount 1ms', 'Memory usage'])
             ->setRows(self::$result);
 
         $output->writeln('');
-        $output->writeln('<info>UUID v4 generation performance, <options=bold>rafalswierczek/uuid</> vs <options=bold>ramsey/uuid</></info>');
+        $output->writeln('<info>UUID v7 generation performance, <options=bold>rafalswierczek/uuid</> vs <options=bold>ramsey/uuid</></info>');
         $table->render();
     }
 }

@@ -1,87 +1,65 @@
-# Super simple UUID v4 generator in PHP
+# Super simple UUID generator in PHP
 
 ## Installation:
 
-> composer require rafalswierczek/uuid4
+> composer require rafalswierczek/uuid
 
 ## Usage:
 
 ```php
-$uuid4 = Uuid4Factory::create();
+// UUID v4:
+$uuid4_1 = Uuid4::create();
+$uuid4_2 = new Uuid4('f3d7fa06-d938-4c22-9505-c585efa381df');
+$uuid4_equals = $uuid4_1->equals($uuid4_2);
+$uuid4_valid = Uuid4::validate('f3d7fa06-d938-4c22-9505-c585efa381df');
 
-$uuid4 = new Uuid4('f3d7fa06-d938-4c22-9505-c585efa381df');
-
-$uuid4 = new Uuid4(Uuid4Factory::createBinary()->toHex());
-
-$uuid4 = new Uuid4(Uuid4Factory::create()->toHex());
-
-$uuid4Binary = Uuid4Factory::createBinary();
-
-$uuid4Binary = new Uuid4Binary(random_bytes(16));
-
-$uuid4Binary = new Uuid4Binary(Uuid4Factory::createBinary()->toBinary());
-
-$uuid4Binary = new Uuid4Binary(Uuid4Factory::create()->toBinary());
-
-// example 1:
-$userClass = new class()
-{
-    private Uuid4Interface $uuid4;
-
-    public function getUuid(bool $toHex = true): string
-    {
-        return $toHex ? $this->uuid4->toHex() : $this->uuid4->toBinary();
-    }
-
-    public function setUuid(Uuid4Interface $uuid4): void
-    {
-        $this->uuid4 = $uuid4;
-    }
-};
-
-$userClass->setUuid(Uuid4Factory::createBinary());
-$uuid4 = $userClass->getUuid(toHex: true); // hex format
-
-// example 2:
-$unknownSource = 'f3d7fa06-d938-4c22-9505-c585efaxxxxx';
-Uuid4::validate($unknownSource);
-
-// example 3:
-$uuid4 = new Uuid4('f3d7fa06-d938-4c22-9505-c585efa381df'); // this also calls validate method because it is VO
-$uuid4Binary = new Uuid4Binary($uuid4->toBinary());         // this also calls validate method because it is VO
-$hexEqualsBin = $uuid4->equals($uuid4Binary);
-$binEqualsHex = $uuid4Binary->equals($uuid4);
+// UUID v7:
+$uuid7_1 = Uuid7::create();
+$uuid7_2 = new Uuid7('0199d59e-8041-7b74-b74e-b94310cd9473');
+$uuid7_equals = $uuid7_1->equals($uuid7_2);
+$uuid7_valid = Uuid7::validate('0199d59e-8041-7b74-b74e-b94310cd9473');
 ```
 
-## Explanation:
+## Requirements:
+PHP 8.3 with x64 architecture for UUID v7
 
-UUID v4 is data of 128 random bits (with small modifications) represented in hexadecimal notation.
+## Performance
 
-Data is divided into 16 octets (from 0 to 15), 8 bits each.
+### UUID v4
 
-Octets are grouped into sections with following names:
+>More than 2 times faster than ramsey/uuid
 
-* time_low (octets 0-3)
-* time_mid (octets 4-5)
-* time_high_and_version (octets 6-7)
-* clock_seq_and_reserved (octet 8)
-* clock_seq_low (octet 9)
-* node (octets 10-15)
+UUID v4 Generation Performance: **rafalswierczek/uuid** vs **ramsey/uuid**:
 
-Result of UUID4 in hex notation looks like this:
+| Library        | Amount   | Time       | Memory usage  |
+|----------------|----------|------------|---------------|
+| rafalswierczek | 10000000 | 23.66 sec  | 0.0000381 MiB |
+| ramsey         | 10000000 | 51.52 sec  | 0.5805206 MiB |
+| rafalswierczek | 1000000  | 2.36 sec   | 0.0003052 MiB |
+| ramsey         | 1000000  | 5.15 sec   | 0.0003052 MiB |
+| rafalswierczek | 1000     | 2.40 ms    | 0.0003052 MiB |
+| ramsey         | 1000     | 5.26 ms    | 0.0003052 MiB |
+| rafalswierczek | 1        | 0.00906 ms | 0.0003052 MiB |
+| ramsey         | 1        | 0.01192 ms | 0.0003052 MiB |
 
-`f2e0aa63-22f2-410c-bcfa-9475cf573193`
+### UUID v7
 
-As you can see, for example `time_low` has 4 octets, each is as follows `f2`, `e0`, `aa`, `63` in hex notation.
+>More than 2 times faster than ramsey/uuid
 
-Now once you have 128 random bits, you have to modify octet 8 in the way that two most significant bits (MSB) are set to: `0` and `1`. For example, let's say 8 octet is as follows: `01101101`. Now you have to make sure that two bits on the left are `00` and then you can add desired `10` so the result is: `10101101`. It's done this way:
+UUID v7 Generation Performance: **rafalswierczek/uuid** vs **ramsey/uuid**:
 
-`01101101` & `00111111` = `00101101`
+| Library        | Amount   | Time          | Amount 1ms | Memory usage  |
+|----------------|----------|---------------|------------|---------------|
+| rafalswierczek | 10000000 | 31.04 sec     | 325        | 3971.8077 MiB |
+| ramsey         | 10000000 | 99.15 sec     | 101        | 1783.8800 MiB |
+| rafalswierczek | 1000000  | 3.05 sec      | 330        | 376.58192 MiB |
+| ramsey         | 1000000  | 8.18 sec      | 122        | 170.58827 MiB |
+| rafalswierczek | 1000     | 2.97 ms       | 250        | 0.3784714 MiB |
+| ramsey         | 1000     | 7.98 ms       | 111        | 0.1724777 MiB |
+| rafalswierczek | 1        | 0.00001215 ms | 1          | 0.0008698 MiB |
+| ramsey         | 1        | 0.00002384 ms | 1          | 0.0006638 MiB |
 
-`00101101` | `10000000` = `10101101`
 
-Once clock_seq_and_reserved is updated it's time to modify octet 6 (first 8 bits of time_high_and_version). You have to do the same steps but with `00001111` for AND and `01000000` for OR. For example if octet 6 is `10100101`, the result is `01000101` so first 4 bits are replaced with `0100` which are bits reserved for UUID v4.
+## Monotonicity of UUID v7
 
-After modifying octet 8 and 6 of 128 random bits and converting it to hex notation you have ready to use UUID v4 string :)
-
-> RFC: https://datatracker.ietf.org/doc/html/rfc4122#section-4.4
+Implementation of UUID v7 in this library supports monotonicity (Method 2 [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562.html#name-monotonicity-and-counters))

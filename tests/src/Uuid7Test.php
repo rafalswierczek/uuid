@@ -4,26 +4,12 @@ declare(strict_types=1);
 
 namespace rafalswierczek\Uuid\Test;
 
-use rafalswierczek\Uuid\Uuid7;
 use PHPUnit\Framework\TestCase;
-use Ramsey\Uuid\Uuid;
-use Symfony\Component\Console\Helper\Table;
-use Symfony\Component\Console\Output\ConsoleOutput;
-
-ini_set('memory_limit', '8192M');
+use rafalswierczek\Uuid\Uuid7;
 
 final class Uuid7Test extends TestCase
 {
     public const VALID_UUID7 = '0199d59e-8041-7b74-b74e-b94310cd9473';
-
-    private static array $result = [];
-
-    public static function tearDownAfterClass(): void
-    {
-        parent::tearDownAfterClass();
-
-        self::printResult();
-    }
 
     public function testNewInstanceAsString(): void
     {
@@ -66,116 +52,37 @@ final class Uuid7Test extends TestCase
         }
     }
 
-    public function testCreatePerformance10M(): void
+    /** This can fail if very unlucky, but it's nothing wrong because such situation won't match the test case name */
+    public function testTheSameIn1Ms(): void
     {
-        $this->expectNotToPerformAssertions();
+        $uuid7A = Uuid7::create();
+        $uuid7B = Uuid7::create();
 
-        $this->performTest('rafalswierczek', 10000000);
+        // the same timestamp, ver, rand_a, var and rand_b_high within 1 ms
+        $this->assertSame(substr($uuid7A->value, 0, 24), substr($uuid7B->value, 0, 24));
+
+        // rand_b_low (counter) should increment
+        $this->assertTrue(substr($uuid7A->value, 24) < substr($uuid7B->value, 24));
     }
 
-    public function testCreatePerformance10MRamsey(): void
+    public function testNotTheSameAfter1Ms(): void
     {
-        $this->expectNotToPerformAssertions();
+        $uuid7A = Uuid7::create();
 
-        $this->performTest('ramsey', 10000000);
-    }
+        usleep(1000); // sleep 1 ms
 
-    public function testCreatePerformance1M(): void
-    {
-        $this->expectNotToPerformAssertions();
+        $uuid7B = Uuid7::create();
 
-        $this->performTest('rafalswierczek', 1000000);
-    }
+        // timestamp must be greater after 1 ms
+        $this->assertTrue(substr($uuid7A->value, 0, 13) < substr($uuid7B->value, 0, 13));
 
-    public function testCreatePerformance1MRamsey(): void
-    {
-        $this->expectNotToPerformAssertions();
+        // rand_a cannot be the same after 1 ms
+        $this->assertNotSame(substr($uuid7A->value, 15, 3), substr($uuid7B->value, 15, 3));
 
-        $this->performTest('ramsey', 1000000);
-    }
+        // var and rand_b_high cannot be the same after 1 ms
+        $this->assertNotSame(substr($uuid7A->value, 19, 4), substr($uuid7B->value, 19, 4));
 
-    public function testCreatePerformance1000(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('rafalswierczek', 1000);
-    }
-
-    public function testCreatePerformance1000Ramsey(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('ramsey', 1000);
-    }
-
-    public function testCreatePerformance1(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('rafalswierczek', 1);
-    }
-
-    public function testCreatePerformance1Ramsey(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('ramsey', 1);
-    }
-
-    private function performTest(string $library, int $amount): void
-    {
-        $mem = memory_get_usage();
-        $start = microtime(true);
-        $uuidList = [];
-
-        if ($library === 'rafalswierczek') {
-            for ($i = 0; $i < $amount; $i++) {
-                $uuidList[] = Uuid7::create();
-            }
-        } elseif ($library === 'ramsey') {
-            for ($i = 0; $i < $amount; $i++) {
-                $uuidList[] = Uuid::uuid7();
-            }
-        }
-
-        $time = substr(sprintf('%12.10f', microtime(true) - $start), 0, 12);
-        $memUsed = memory_get_usage() - $mem;
-
-        $uuidListGrouped = [];
-
-        foreach ($uuidList as $uuid7) {
-            $timestampHex = substr((string) $uuid7, 0, 13);
-
-            $uuidListGrouped[$timestampHex][] = (string) $uuid7;
-        }
-
-        $uuidListGroupedCounts = [];
-
-        foreach ($uuidListGrouped as $group) {
-            $uuidListGroupedCounts[] = count($group);
-        }
-
-        $gen1Ms = (int) (array_sum($uuidListGroupedCounts) / count($uuidListGrouped));
-
-        self::$result[] = [
-            'library' => $library,
-            'amount' => $amount,
-            'timeTotal' => $time,
-            'gen1Ms' => $gen1Ms,
-            'memUsage' => substr(sprintf('%8.7f', $memUsed / 1024 / 1024), 0, 9) . ' MiB',
-        ];
-    }
-
-    private static function printResult(): void
-    {
-        $output = new ConsoleOutput();
-        $table = new Table($output);
-        $table
-            ->setHeaders(['Library', 'Amount', 'Time seconds', 'Amount 1ms', 'Memory usage'])
-            ->setRows(self::$result);
-
-        $output->writeln('');
-        $output->writeln('<info>UUID v7 generation performance, <options=bold>rafalswierczek/uuid</> vs <options=bold>ramsey/uuid</></info>');
-        $table->render();
+        // rand_b_low cannot be the same after 1 ms
+        $this->assertNotSame(substr($uuid7A->value, 24), substr($uuid7B->value, 24));
     }
 }

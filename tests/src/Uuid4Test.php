@@ -5,25 +5,10 @@ declare(strict_types=1);
 namespace rafalswierczek\Uuid\Test;
 
 use rafalswierczek\Uuid\Uuid4;
-use PHPUnit\Framework\TestCase;
-use Ramsey\Uuid\Uuid;
-use Symfony\Component\Console\Helper\Table;
-use Symfony\Component\Console\Output\ConsoleOutput;
 
-ini_set('memory_limit', '8192M');
-
-final class Uuid4Test extends TestCase
+final class Uuid4Test extends PerformanceBase
 {
     public const VALID_UUID4 = 'f3d7fa06-d938-4c22-9505-c585efa381df';
-
-    private static array $result = [];
-
-    public static function tearDownAfterClass(): void
-    {
-        parent::tearDownAfterClass();
-
-        self::printResult();
-    }
 
     public function testNewInstanceAsString(): void
     {
@@ -66,98 +51,14 @@ final class Uuid4Test extends TestCase
         }
     }
 
-    public function testCreatePerformance10M(): void
+    public function testValidateManyFfi(): void
     {
         $this->expectNotToPerformAssertions();
 
-        $this->performTest('rafalswierczek', 10000000);
-    }
+        $uuids = Uuid4::createManyFfi(1000000);
 
-    public function testCreatePerformance10MRamsey(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('ramsey', 10000000);
-    }
-
-    public function testCreatePerformance1M(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('rafalswierczek', 1000000);
-    }
-
-    public function testCreatePerformance1MRamsey(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('ramsey', 1000000);
-    }
-
-    public function testCreatePerformance1000(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('rafalswierczek', 1000);
-    }
-
-    public function testCreatePerformance1000Ramsey(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('ramsey', 1000);
-    }
-
-    public function testCreatePerformance1(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('rafalswierczek', 1);
-    }
-
-    public function testCreatePerformance1Ramsey(): void
-    {
-        $this->expectNotToPerformAssertions();
-
-        $this->performTest('ramsey', 1);
-    }
-
-    private function performTest(string $library, int $amount): void
-    {
-        $mem = memory_get_usage();
-        $start = microtime(true);
-
-        if ($library === 'rafalswierczek') {
-            for ($i = 0; $i < $amount; $i++) {
-                Uuid4::create();
-            }
-        } elseif ($library === 'ramsey') {
-            for ($i = 0; $i < $amount; $i++) {
-                Uuid::uuid4();
-            }
+        foreach ($uuids as $uuid4) {
+            Uuid4::validate($uuid4->value);
         }
-
-        $time = substr(sprintf('%12.10f', microtime(true) - $start), 0, 12);
-        $memUsed = memory_get_usage() - $mem;
-
-        self::$result[] = [
-            'library' => $library,
-            'amount' => $amount,
-            'timeTotal' => $time,
-            'memUsage' => substr(sprintf('%8.7f', $memUsed / 1024 / 1024), 0, 9) . ' MiB',
-        ];
-    }
-
-    private static function printResult(): void
-    {
-        $output = new ConsoleOutput();
-        $table = new Table($output);
-        $table
-            ->setHeaders(['Library', 'Amount', 'Time seconds', 'Memory usage'])
-            ->setRows(self::$result);
-
-        $output->writeln('');
-        $output->writeln('<info>UUID v4 generation performance, <options=bold>rafalswierczek/uuid</> vs <options=bold>ramsey/uuid</></info>');
-        $table->render();
     }
 }

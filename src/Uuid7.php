@@ -45,19 +45,17 @@ final class Uuid7 implements \Stringable
             self::$verRandA = self::getVerRandA();
         }
 
-        $unixTsMs = str_pad(dechex($timestamp), 12, '0', STR_PAD_LEFT); // unix_ts_ms
-        
         $uuid7 = sprintf(
-            '%s-%s-%s-%s-%s',
-            substr($unixTsMs, 0, 8),
-            substr($unixTsMs, 8, 4),
-            dechex(self::$verRandA), // ver and rand_a, always 16 bits because dechex handles 0 bit padding
-            dechex(self::$varRandBHigh), // var and rand_b high, always 16 bits
-            str_pad(dechex(self::$randBLow), 12, '0', STR_PAD_LEFT), // rand_b low (counter)
+            '%08x-%04x-%04x-%04x-%012x',
+            $timestamp >> 16,
+            $timestamp & 0xFFFF,
+            self::$verRandA,
+            self::$varRandBHigh,
+            self::$randBLow,
         );
 
         self::$lastTimestamp = $timestamp;
-        
+
         return new self($uuid7, false);
     }
 

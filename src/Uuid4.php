@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace rafalswierczek\Uuid;
 
 /**
- * RFC: https://datatracker.ietf.org/doc/html/rfc4122#section-4.4
+ * RFC: https://www.rfc-editor.org/rfc/rfc9562.html#name-uuid-version-4
  */
 final class Uuid4 implements \Stringable
 {
+    private static ?\FFI $ffi = null;
+
     public function __construct(public string $value, bool $validate = true)
     {
         $this->value = strtolower($value);
@@ -20,25 +22,46 @@ final class Uuid4 implements \Stringable
 
     public static function create(): self
     {
-        $bytes = random_bytes(16);
-        
-        // set 2 MSB of clock_seq_hi_and_reserved to 00 in octet 8 | keep 6 LSB the same
-        $reset_clock_seq_hi_and_reserved = ord($bytes[8]) & 0b00111111;
-        
-        // add 10 to 2 MSB | keep 6 LSB the same
-        $bytes[8] = chr($reset_clock_seq_hi_and_reserved | 0b10000000);
-        
-        // set 4 MSB of time_hi_and_version to 0000 in octet 6 | keep 4 LSB the same | 4 MSB are only available in octet 6
-        $reset_time_hi_and_version = ord($bytes[6]) & 0b00001111;
-        
-        // add 0100 to 4 MSB | keep 4 LSB the same 
-        $bytes[6] = chr($reset_time_hi_and_version | 0b01000000);
-        
-        $hexString = bin2hex($bytes);
-        
-        $uuid4 = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split($hexString, 4));
-        
+        $bytes = random_bytes(18); // add 2 extra dummy bytes for later performance boost
+
+        $bytes[7] = chr((ord($bytes[7]) & 0b00001111) | 0b01000000); // set ver by nulling 4 MSB and setting 0100 to them, octet 7 is used because of dummy bytes
+        $bytes[9] = chr((ord($bytes[9]) & 0b11110011) | 0b00001000); // set var by nulling bits 5 and 6 and setting 10 to them, octet 9 is used because of dummy bytes
+
+        $uuid4 = bin2hex($bytes);
+        $uuid4[8] = $uuid4[13] = $uuid4[18] = $uuid4[23] = '-'; // replace 16 (4x4) dummy bits with -
+
         return new self($uuid4, false);
+    }
+
+    /** @return array<self> */
+    public static function createManyFfi(int $count): array
+    {
+        if (self::$ffi === null) {
+            if (PHP_OS_FAMILY === 'Windows') {
+                $libPath = __DIR__ . '/../include/nwuuid4.dll';
+            } elseif (PHP_OS_FAMILY === 'Linux') {
+                $libPath = __DIR__ . '/../include/nwuuid4.so';
+            } else {
+                throw new \Exception(PHP_OS_FAMILY. ' OS in not supported');
+            }
+
+            self::$ffi = \FFI::cdef(
+                "void generate_uuid4(char *out); void generate_uuid4_batch(char *out, int count);",
+                $libPath,
+            );
+        }
+
+        $buffer = self::$ffi->new("char[" . ($count * 37) . "]"); // 37: 36 bytes of uuid4 format + 1 null byte
+
+        self::$ffi->generate_uuid4_batch($buffer, $count);
+
+        $result = [];
+
+        for ($i = 0; $i < $count; $i++) {
+            $result[] = new self(\FFI::string($buffer + ($i * 37), 36), false);
+        }
+
+        return $result;
     }
 
     public static function validate(string $value): void

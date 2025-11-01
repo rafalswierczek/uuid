@@ -6,91 +6,38 @@ namespace rafalswierczek\Uuid;
 
 /**
  * RFC: https://www.rfc-editor.org/rfc/rfc9562.html#name-uuid-version-7
- * To keep lexicographical order for each generation during the same timestamp, the Method 2 monotonicity is implemented using static fields
+ * To keep lexicographical order for each generation during the same timestamp, the Method 3 of monotonicity is implemented
  */
-final class Uuid7 implements \Stringable
+final class Uuid7 extends Uuid
 {
-    private const int MAX_INCREMENT = 0xFFFF; // 65535
-
-    private static int $lastTimestamp = 0;
-    private static int $verRandA = 0;
-    private static int $varRandBHigh = 0;
-    private static int $randBLow = 0;
-
-    public function __construct(public string $value, bool $validate = true)
-    {
-        $this->value = strtolower($value);
-
-        if ($validate) {
-            self::validate($this->value);
-        }
-    }
-
     public static function create(): self
     {
         if (PHP_INT_SIZE !== 8) {
             throw new \Exception('Only PHP with 64 bit integer is supported');
         }
 
-        $timestamp = (int) (microtime(true) * 1000);
+        $timestampMs = microtime(true) * 1000;
+        $timestampMicro = round($timestampMs * 1000) % 1000; // get only microseconds part of the timestamp, for example: $timestampMs = float(1761309765039.0168), $timestampMicro = int(17)
+        $timestampMs = (int) $timestampMs;
 
-        $timestamp = $timestamp & 0xFFFFFFFFFFFF; // take up to 48 bits of timestamp
-
-        if ($timestamp === self::$lastTimestamp) {
-            self::$randBLow += random_int(1, self::MAX_INCREMENT); // increment from 1 to 65535 so that uuid7 with monotonicity is harder to guess
-            self::$randBLow = self::$randBLow & 0xFFFFFFFFFFFF; // keep rand_b low at max of 48 bits, start from 0 when overflow
-        } else {
-            self::$randBLow = random_int(0, 0xFFFF0001FFFE); // from 0 to (48 bit uint - (MAX_INCREMENT * MAX_INCREMENT)), this is to always allow MAX_INCREMENT increments of the same numer which is MAX_INCREMENT
-            self::$varRandBHigh = self::getVarRandBHigh();
-            self::$verRandA = self::getVerRandA();
-        }
+        $varRandB = (0b10 << 62) | random_int(0, 0x3FFFFFFFFFFFFFFF); // 2 bits var and 62 bits rand_b, always 64 bits
 
         $uuid7 = sprintf(
             '%08x-%04x-%04x-%04x-%012x',
-            $timestamp >> 16,
-            $timestamp & 0xFFFF,
-            self::$verRandA,
-            self::$varRandBHigh,
-            self::$randBLow,
+            $timestampMs >> 16, // get all leftmost bits before 16 LSB and left-pad them with 0 using sprintf to get 32 bits
+            $timestampMs & 0xFFFF, // get up to 16 LSB of the timestamp, left-pad with 0 to get 16 bits
+            (0b111 << 12) | ($timestampMicro & 0xFFF), // create 15 bits buffer with version (111) as MSB and then fill its LSB with 12 LSB of microseconds, left-pad with 0 to get 16 bits
+            ($varRandB >> 48) & 0xFFFF, // get 16 MSB (64-48) of rand_b, var in first 2 MSB
+            $varRandB & 0xFFFFFFFFFFFF, // get 48 LSB of rand_b
         );
-
-        self::$lastTimestamp = $timestamp;
 
         return new self($uuid7, false);
     }
 
     public static function validate(string $value): void
     {
-        if (!preg_match("/^[0-9a-f]{8}\-[0-9a-f]{4}\-7[0-9a-f]{3}\-[89ab][0-9a-f]{3}\-[0-9a-f]{12}$/", strtolower($value))) {
+        if (!preg_match("/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/", strtolower($value))) {
             throw new \Exception('Invalid UUID v7 format');
         }
-    }
-
-    public function __toString(): string
-    {
-        return $this->value;
-    }
-
-    public function equals(self $uuid7): bool
-    {
-        return $uuid7->value === $this->value;
-    }
-
-    /** @return int 15 bit version with rand_a */
-    private static function getVerRandA(): int
-    {
-        $ver = 0b111 << 12; // version with space for rand_a
-        $randA = random_int(0, 0xFFF); // from 1 to 12 bits
-
-        return $ver | $randA; // add rand_a to LSB of ver
-    }
-
-    /** @return int 16 bit var with left part of rand_b */
-    private static function getVarRandBHigh(): int
-    {
-        $var = 0b10 << 14; // var with space for 14 MSB of rand_b
-        $randBHigh = random_int(0, 0xFFFF) & 0b11111111111111; // from 0 to 14 bits
-
-        return $var | $randBHigh; // add 14 MSB of rand_b to LSB of var
     }
 }

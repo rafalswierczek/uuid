@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace rafalswierczek\Uuid\Test;
+namespace rafalswierczek\Uuid\Test\Source;
 
+use PHPUnit\Framework\TestCase;
 use rafalswierczek\Uuid\Uuid4;
 
-final class Uuid4Test extends PerformanceBase
+final class Uuid4Test extends TestCase
 {
     public const VALID_UUID4 = 'f3d7fa06-d938-4c22-9505-c585efa381df';
 

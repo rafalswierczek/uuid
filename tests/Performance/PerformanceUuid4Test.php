@@ -2,129 +2,129 @@
 
 declare(strict_types=1);
 
-namespace rafalswierczek\Uuid4\Test;
+namespace rafalswierczek\Uuid\Test\Performance;
 
-use rafalswierczek\Uuid\Test\PerformanceBase;
-use rafalswierczek\Uuid\Uuid7;
+use rafalswierczek\Uuid\Uuid4;
 use Ramsey\Uuid\Uuid as RamseyUuid;
 use Symfony\Component\Uid\Uuid as SymfonyUuid;
 
-final class PerformanceUuid7Test extends PerformanceBase
+final class PerformanceUuid4Test extends PerformanceBase
 {
+    /** @var array<array{library: string, amount: int, timeTotal: string, memUsage: string}> $result */
     private static array $result = [];
 
     public static function tearDownAfterClass(): void
     {
         parent::tearDownAfterClass();
 
-        static::printResult(self::$result, ['Library', 'Amount', 'Time', 'Amount in 1ms', 'Memory usage'], 'UUID v7 generation performance');
+        static::printResult(self::$result, ['Library', 'Amount', 'Time', 'Memory usage'], 'UUID v4 generation performance');
 
         self::$result = []; // needed because GC cannot remove static fields
     }
 
-    public function testCreate1()
+    public function testCreate1Uuid4Rafalswierczek(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            Uuid7::create(); // CPU warm-up
+            Uuid4::create(); // CPU warm-up
         }
 
         $this->testCreate('rafalswierczek', 1, 100_000);
     }
 
-    public function testCreate1K()
+    public function testCreate1KUuid4Rafalswierczek(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            Uuid7::create(); // CPU warm-up
+            Uuid4::createManyFfi(1); // CPU warm-up
         }
 
         $this->testCreate('rafalswierczek', 1000, 100);
     }
 
-    public function testCreate1M()
+    public function testCreate1MUuid4Rafalswierczek(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            Uuid7::create(); // CPU warm-up
+            Uuid4::createManyFfi(1); // CPU warm-up
         }
 
         $this->testCreate('rafalswierczek', 1_000_000, 10);
     }
 
-    public function testCreate50M()
+    public function testCreate50MUuid4Rafalswierczek(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            Uuid7::create(); // CPU warm-up
+            Uuid4::createManyFfi(1); // CPU warm-up
         }
 
         $this->testCreate('rafalswierczek', 50_000_000, 1);
     }
 
-    public function testCreate1Symfony()
+    public function testCreate1Uuid4Symfony(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            SymfonyUuid::v7(); // CPU warm-up
+            SymfonyUuid::v4(); // CPU warm-up
         }
 
         $this->testCreate('symfony', 1, 100_000);
     }
 
-    public function testCreate1KSymfony()
+    public function testCreate1KUuid4Symfony(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            SymfonyUuid::v7(); // CPU warm-up
+            SymfonyUuid::v4(); // CPU warm-up
         }
 
         $this->testCreate('symfony', 1000, 100);
     }
 
-    public function testCreate1MSymfony()
+    public function testCreate1MUuid4Symfony(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            SymfonyUuid::v7(); // CPU warm-up
+            SymfonyUuid::v4(); // CPU warm-up
         }
 
         $this->testCreate('symfony', 1_000_000, 10);
     }
 
-    public function testCreate50MSymfony()
+    public function testCreate50MUuid4Symfony(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            SymfonyUuid::v7(); // CPU warm-up
+            SymfonyUuid::v4(); // CPU warm-up
         }
 
         $this->testCreate('symfony', 50_000_000, 1);
     }
 
-    public function testCreate1Ramsey()
+    public function testCreate1Uuid4Ramsey(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            RamseyUuid::uuid7(); // CPU warm-up
+            RamseyUuid::uuid4(); // CPU warm-up
         }
 
         $this->testCreate('ramsey', 1, 100_000);
     }
 
-    public function testCreate1KRamsey()
+    public function testCreate1KUuid4Ramsey(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            RamseyUuid::uuid7(); // CPU warm-up
+            RamseyUuid::uuid4(); // CPU warm-up
         }
 
         $this->testCreate('ramsey', 1000, 100);
     }
 
-    public function testCreate1MRamsey()
+    public function testCreate1MUuid4Ramsey(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            RamseyUuid::uuid7(); // CPU warm-up
+            RamseyUuid::uuid4(); // CPU warm-up
         }
 
         $this->testCreate('ramsey', 1_000_000, 10);
     }
 
-    public function testCreate50MRamsey()
+    public function testCreate50MUuid4Ramsey(): void
     {
         for ($i = 0; $i < 100; $i++) {
-            RamseyUuid::uuid7(); // CPU warm-up
+            RamseyUuid::uuid4(); // CPU warm-up
         }
 
         $this->testCreate('ramsey', 50_000_000, 1);
@@ -136,29 +136,26 @@ final class PerformanceUuid7Test extends PerformanceBase
 
         $timeSum = 0;
         $memSum = 0;
-        $gen1MsSum = 0;
 
         for ($i = 0; $i < $attempts; $i++) {
-            [$end, $mem, $gen1Ms] = $this->performTest($library, $amount);
+            [$end, $mem] = $this->performTest($library, $amount);
 
             $timeSum += $end;
             $memSum += $mem;
-            $gen1MsSum += $gen1Ms;
         }
 
         $timeAvg = static::formatTime($timeSum / $attempts);
         $memUsedAvg = static::formatMemory($memSum / $attempts);
-        $gen1MsAvg = round($gen1MsSum / $attempts);
 
         self::$result[] = [
             'library' => $library,
             'amount' => $amount,
             'timeTotal' => $timeAvg,
-            'gen1Ms' => $gen1MsAvg,
             'memUsage' => $memUsedAvg,
         ];
     }
 
+    /** @return array{0: float, 1: int} */
     private function performTest(string $library, int $amount): array
     {
         gc_collect_cycles();
@@ -167,41 +164,27 @@ final class PerformanceUuid7Test extends PerformanceBase
         $uuidList = []; // this is to check mem usage
 
         if ($library === 'rafalswierczek') {
-            for ($i = 0; $i < $amount; $i++) {
-                $uuidList[] = Uuid7::create();
+            if ($amount === 1) {
+                $uuidList[] = Uuid4::create();
+            } else {
+                $uuidList = Uuid4::createManyFfi($amount);
             }
         } elseif ($library === 'ramsey') {
             for ($i = 0; $i < $amount; $i++) {
-                $uuidList[] = RamseyUuid::uuid7();
+                $uuidList[] = RamseyUuid::uuid4();
             }
         } elseif ($library === 'symfony') {
             for ($i = 0; $i < $amount; $i++) {
-                $uuidList[] = SymfonyUuid::v7();
+                $uuidList[] = SymfonyUuid::v4();
             }
         }
 
         $end = microtime(true) - $start;
         $mem = memory_get_usage() - $memStart;
 
-        $uuidListGrouped = [];
-
-        foreach ($uuidList as $uuid7) {
-            $timestampHex = substr((string) $uuid7, 0, 13);
-
-            $uuidListGrouped[$timestampHex][] = (string) $uuid7;
-        }
-
-        $uuidListGroupedCounts = [];
-
-        foreach ($uuidListGrouped as $group) {
-            $uuidListGroupedCounts[] = count($group);
-        }
-
-        $gen1Ms = (int) (array_sum($uuidListGroupedCounts) / count($uuidListGrouped));
-
         unset($uuidList);
         gc_collect_cycles();
 
-        return [$end, $mem, $gen1Ms];
+        return [$end, $mem];
     }
 }

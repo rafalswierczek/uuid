@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace rafalswierczek\Uuid\Test;
+namespace rafalswierczek\Uuid\Test\Performance;
 
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Helper\Table;
@@ -36,6 +36,10 @@ abstract class PerformanceBase extends TestCase
         }
     }
 
+    /**
+     * @param array<array{amount: int}> $result
+     * @param array<string> $headers
+     */
     protected static function printResult(array $result, array $headers, string $title): void
     {
         $groupedByAmount = [];
@@ -44,23 +48,23 @@ abstract class PerformanceBase extends TestCase
             $groupedByAmount[$row['amount']][] = $row;
         }
 
-        $result = [];
+        $result2 = [];
 
         foreach ($groupedByAmount as $group) {
             foreach ($group as $row) {
-                $result[] = $row;
+                $result2[] = $row;
             }
 
-            $result[] = array_fill(0, count($headers) - 1, '');
+            $result2[] = array_fill(0, count($headers) - 1, '');
         }
 
-        array_pop($result);
+        array_pop($result2);
 
         $output = new ConsoleOutput();
         $table = new Table($output);
         $table
             ->setHeaders($headers)
-            ->setRows($result);
+            ->setRows($result2);
 
         $output->writeln('');
         $output->writeln("<info>$title</info>");

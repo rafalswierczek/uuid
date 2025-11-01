@@ -7,18 +7,9 @@ namespace rafalswierczek\Uuid;
 /**
  * RFC: https://www.rfc-editor.org/rfc/rfc9562.html#name-uuid-version-4
  */
-final class Uuid4 implements \Stringable
+final class Uuid4 extends Uuid
 {
     private static ?\FFI $ffi = null;
-
-    public function __construct(public string $value, bool $validate = true)
-    {
-        $this->value = strtolower($value);
-
-        if ($validate) {
-            self::validate($this->value);
-        }
-    }
 
     public static function create(): self
     {
@@ -53,12 +44,12 @@ final class Uuid4 implements \Stringable
 
         $buffer = self::$ffi->new("char[" . ($count * 37) . "]"); // 37: 36 bytes of uuid4 format + 1 null byte
 
-        self::$ffi->generate_uuid4_batch($buffer, $count);
+        self::$ffi->generate_uuid4_batch($buffer, $count); // @phpstan-ignore-line
 
         $result = [];
 
         for ($i = 0; $i < $count; $i++) {
-            $result[] = new self(\FFI::string($buffer + ($i * 37), 36), false);
+            $result[] = new self(\FFI::string($buffer + ($i * 37), 36), false); // @phpstan-ignore-line
         }
 
         return $result;
@@ -69,15 +60,5 @@ final class Uuid4 implements \Stringable
         if(!preg_match("/^[0-9a-f]{8}\-[0-9a-f]{4}\-4[0-9a-f]{3}\-[89ab][0-9a-f]{3}\-[0-9a-f]{12}$/", strtolower($value))) {
             throw new \Exception('Invalid UUID v4 format');
         }
-    }
-
-    public function __toString(): string
-    {
-        return $this->value;
-    }
-
-    public function equals(self $uuid4): bool
-    {
-        return $uuid4->value === $this->value;
     }
 }

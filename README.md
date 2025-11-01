@@ -1,5 +1,7 @@
 # Simple and fast UUID generator in PHP
 
+[![Build](https://github.com/rafalswierczek/uuid/actions/workflows/php.yml/badge.svg)](https://github.com/rafalswierczek/uuid/actions/workflows/php.yml)
+
 ## Installation:
 
 > composer require rafalswierczek/uuid

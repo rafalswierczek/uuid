@@ -157,7 +157,7 @@ _______________________________________________________________________
 
 ## Monotonicity of UUID v7
 
-Implementation of UUID v7 in this library supports monotonicity (Method 2 [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562.html#name-monotonicity-and-counters))
+Implementation of UUID v7 in this library supports monotonicity (Method 3 [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562.html#name-monotonicity-and-counters))
 
 ## Compilation of UUID v4 C code
 
